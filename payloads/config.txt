@@ -1,0 +1,3 @@
+hashdump.ps1,HASH,hsh
+mimikatz.ps1,MIMIKATZ,kat
+

