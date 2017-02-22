@@ -1,5 +1,5 @@
 This is the BadUSB subset of my TeensyPWN project. This is designed to run on a teensy 3.5/6 using the internal microSD. The project uses a modified version of the USaBUSe transport using RawHID.
-The modificiations include the addition of a sequence field and flags.
+The modificiations include the addition of a sequence field and flags to the data packet, to make later communication more reliable. Initial bootstrap still uses the original USaBUSe transport for sending stage 2
 
 ```
 struct hid_packet { //USB handles CRC/packet loss, so all we need is size and out of order correction
