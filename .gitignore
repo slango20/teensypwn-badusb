@@ -1,2 +1,8 @@
 .pioenvs
 .piolibdeps
+.cproject
+.project
+.travis.yml
+.settings
+usbserial.hex
+usbserial.hex.eep
