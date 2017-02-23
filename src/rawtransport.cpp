@@ -7,6 +7,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+typedef enum {
+	HID_ERR_NOIMP, //not implemented
+	HID_ERR, //generic error
+	HID_ERR_INIT, //you forgot to initialize the transport, idiot
+	HID_OK //OK
+} HID_STATUS ;
 
 HIDTransport::HIDTransport(){
 	this->buf_head=0;
@@ -56,3 +62,11 @@ bool HIDTransport::overflow(){ //resets the overflow flag, so be sore to store i
 	buf_overflow = false;
 	return retval;
 }
+void* HIDTransport::parsedata(hid_packet* packbuf, int len){ //parse an array of packets into
+
+}
+
+HID_STATUS send_packet(hid_packet* pack){
+	return HID_ERR_NOIMP; //not implemented
+}
+

@@ -3,9 +3,10 @@
 struct hid_packet { //USB handles CRC/packet loss, so all we need is size and out of order correction
     char magic; //magic byte to make sure it's the actual payload
     char seq; //sequence number of existing packet, when sent with a NACK means "restart from this packet"
+    //SYN means "this is the number of packets to expect"
     struct flags; //flags, 1 byte     
     char len; //packet len, so trailing garbage/padding is ignored
-    char data[60]; //data, 60 bytes
+    char data[60]; //data, fixed 60 bytes due to limitations of RawHID
 };
 struct flags {
     bool syn:1; //tell GCC that each variable takes 1 bit
@@ -27,6 +28,7 @@ class HIDTransport {
         bool available();
         bool overflow();
         HIDTransport();
+        void* parsedata(hid_packet*, int);
 };
 
 extern HIDTransport hid_transport;

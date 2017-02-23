@@ -18,6 +18,7 @@ Payload::Payload(const char* filename, const char* comport){
 	this->comport=(char*)malloc(sizeof(comport));
 	this->comport[strlen(comport)]='\0'; //null terminator
 	strncpy(this->comport, filename, strlen(comport));
+	this->extension="";
 }
 
 Payload::Payload(const char* filename){
