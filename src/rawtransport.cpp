@@ -1,15 +1,17 @@
 //TODO: impliment more functionality using USaBUSe code
 //TODO: clean indentation using eclipse
-//TODO: add packet handler to fire during IRQ, and throw NACKss
+//TODO: add packet handler to fire during IRQ, and throw NACKs
+//TODO: add proper init.
+//TODO: figure out how to bind the protocol to the transport layer
 #include "rawtransport.h"
 #include <string.h>
 using namespace std;
 
 
         HIDTransport::HIDTransport(){
-            this->buf_head=0;
+            this->buf_head=0; 
             this->buf_tail=0;
-            this->hid_buffer = new hid_packet[HID_BUF_SIZE];
+            this->hid_buffer = new hid_packet[HID_BUF_SIZE]; //usually set to 16 (1k bytes)
             this->buf_overflow=false;
         }
         bool HIDTransport::push_packet(hid_packet* pack) { //head is next uninitialized data
@@ -42,14 +44,14 @@ using namespace std;
             if(available()){
                 memcpy(dest, &hid_buffer[buf_tail], 64);
                 return true;
-            } else {
+            } else { //no data to return
                 return false;
             }
         }
         bool HIDTransport::available(){
-            return (buf_head != buf_tail); //if they are different, the data is the same. we only increment head if they won't match
+            return (buf_head != buf_tail); //if they are different, there is data.
         }
-        bool HIDTransport::overflow(){
+        bool HIDTransport::overflow(){ //resets the overflow flag, so be sore to store it somewhere if needed
             bool retval = buf_overflow;
             buf_overflow = false;
             return retval;
