@@ -1,3 +1,12 @@
+; Comments MUST be at the beginning of a line
+; an example of an entry that does not return data is 
+; example.ps1
+;
+; an example of an entry that does return data using magic MAGIK and the extension bin
+; example2.ps1,MAGIK,bin
+;
+; note that there can NOT be any spaces on the line
+; and ALL lines that do not contain entries MUST have ; or it will be considered the EOF
 nishang.ps1
 hashdump.ps1,HASH,hsh
 mimikatz.ps1,MIMIKATZ,kat
