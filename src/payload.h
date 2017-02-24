@@ -10,7 +10,6 @@
 #include <SD.h>
 class Payload {
 private:
-	char* comport;
 	char* filename;
 	char* magic;
 	char* extension;
@@ -26,12 +25,9 @@ public:
 	void setext(const char* ext);
 	const char* getext();
 	void fire();
-	static Payload open(const char* filename); //no COM port needed
-	static Payload open(const char* filename, const char* comport);
-	void setComPort(const char* comport);
-	char* getComPort();
+	static Payload open(const char* filename);
 	bool doesreturn();
-	void doesreturn(bool returns);
+	void doesreturn(bool returns); //set whether the payload returns data
 };
 
 #endif /* SRC_PAYLOAD_H_ */
