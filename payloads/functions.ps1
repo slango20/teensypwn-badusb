@@ -47,3 +47,4 @@ foreach ($dev in $devs) {
         }
 }
 [ps]::[sploit]::i($fn)
+x

