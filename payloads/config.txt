@@ -1,3 +1,4 @@
+nishang.ps1
 hashdump.ps1,HASH,hsh
 mimikatz.ps1,MIMIKATZ,kat
-
+exit.ps1
